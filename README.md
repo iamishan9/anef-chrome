@@ -21,8 +21,7 @@ https://administration-etrangers-en-france.interieur.gouv.fr/
 1. Open `chrome://extensions`.
 2. Enable Developer mode.
 3. Click "Load unpacked".
-4. Select this folder:
-   `/Users/ishangautam/Documents/ANEF chrome extension`
+4. Select the folder where you cloned or downloaded this repository.
 5. Open ANEF, log in, then go to your naturalization dashboard.
 
 ## Privacy model
@@ -38,6 +37,6 @@ The estimate ranges are intentionally conservative. They are seeded from:
 - ANEF public app bundle endpoint names and current status enum, inspected on 2026-06-01.
 - France Prefecture's ANEF API guide for `dossier_state`, `createdAt`, and `updatedAt` usage.
 - Naturalisation-Facile 2026 public status dataset and explanations.
-- Public Services+ reports about `CONTROLE_EN_ATTENTE_PEC` delays in May 2026.
+- Public Services+ user reports about ANEF processing delays in 2026.
 
 These are not official processing commitments.
