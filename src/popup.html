@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ANEF Tracker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="popup">
+    <header class="popup-header">
+      <div>
+        <h1>ANEF Tracker</h1>
+        <p id="subtitle">Local naturalization history</p>
+      </div>
+      <button id="export" type="button">Export</button>
+    </header>
+
+    <section class="current" id="current">
+      <span class="muted">Waiting for ANEF data</span>
+    </section>
+
+    <section>
+      <h2>Observed Changes</h2>
+      <ol id="history" class="history"></ol>
+    </section>
+
+    <section>
+      <h2>Dated Steps</h2>
+      <ol id="timeline" class="history"></ol>
+    </section>
+
+    <footer>
+      Data is stored only in Chrome storage on this device.
+    </footer>
+  </main>
+  <script src="status-data.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
