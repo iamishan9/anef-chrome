@@ -3,6 +3,7 @@
 
   const STORE_KEY = "anefTrackerState";
   const DATA = window.ANEF_TRACKER_DATA || { statuses: {}, phases: {}, statusOrder: [], negativeOrder: [], sources: [] };
+  const LOGIC = window.ANEF_TRACKER_LOGIC || {};
 
   const STEP_SETS = {
     completeScec: [
@@ -311,22 +312,17 @@
 
   function stepDate(step) {
     const currentId = currentStepId();
-    if (currentId === step.id && (state.current?.date || state.current?.observedAt)) {
-      return state.current.date || state.current.observedAt;
+    if (typeof LOGIC.selectStepDate === "function") {
+      return LOGIC.selectStepDate({
+        step,
+        currentStepId: currentId,
+        currentDate: state.current?.date,
+        currentObservedAt: state.current?.observedAt,
+        codeDates: (step.codes || []).map(dateForCode).filter(Boolean),
+        keyDates: state.keyDates || [],
+      });
     }
-    const dates = [];
-    for (const code of step.codes) {
-      const date = dateForCode(code);
-      if (date) dates.push(date);
-    }
-    for (const item of state.keyDates || []) {
-      const label = normalizeText(item.label || "");
-      if (!item.date) continue;
-      if (step.label.toLowerCase().includes("assimilation") && label.includes("assimilation")) dates.push(item.date);
-      if (step.label.toLowerCase().includes("recepisse") && label.includes("recepisse")) dates.push(item.date);
-      if (step.id === currentId && label === "status date") dates.push(item.date);
-    }
-    return dates.sort()[0] || null;
+    return null;
   }
 
   function normalizeText(text) {
@@ -523,6 +519,13 @@
     return node;
   }
 
+  function isNationalityPage() {
+    const text = document.body?.innerText || document.body?.textContent || "";
+    if (typeof LOGIC.isNationalityPage === "function") return LOGIC.isNationalityPage(window.location.href, text);
+    const combined = normalizeText(`${window.location.href} ${text}`);
+    return combined.includes("naturalisation") || combined.includes("nationalite");
+  }
+
   function cleanupStepDecorations() {
     document.querySelectorAll(".anef-tracker-step-date, .anef-tracker-step-code, .anef-tracker-step-note").forEach((node) => node.remove());
     document.querySelectorAll(".anef-tracker-step-enhanced, .anef-tracker-current-step").forEach((node) => {
@@ -567,6 +570,12 @@
     } else if (!root.parentElement) {
       target.appendChild(root);
     }
+  }
+
+  function removeRoot() {
+    if (!root) return;
+    root.textContent = "";
+    if (root.parentElement) root.remove();
   }
 
   function renderCurrent(container) {
@@ -680,6 +689,15 @@
   function render() {
     quietUntil = Date.now() + 500;
     cleanupStepDecorations();
+    if (!isNationalityPage()) {
+      removeRoot();
+      window.setTimeout(() => {
+        quietUntil = 0;
+      }, 500);
+      return;
+    }
+
+    injectPageScript();
     const context = findStepperContext();
     placeRoot(context);
     decorateAnefStepper(context);
@@ -699,11 +717,24 @@
     }, 500);
   }
 
+  function installLocationWatcher() {
+    let lastUrl = window.location.href;
+    const refreshForLocation = () => {
+      if (window.location.href === lastUrl) return;
+      lastUrl = window.location.href;
+      quietUntil = 0;
+      scheduleRender();
+    };
+    window.addEventListener("hashchange", refreshForLocation);
+    window.addEventListener("popstate", refreshForLocation);
+    window.setInterval(refreshForLocation, 600);
+  }
+
   async function boot() {
     await loadInitialState();
     render();
     window.addEventListener("ANEF_TRACKER_DATA", handleIncoming);
-    injectPageScript();
+    installLocationWatcher();
     const observer = new MutationObserver((mutations) => {
       if (Date.now() < quietUntil) return;
       const onlyOwnChanges = mutations.every((mutation) => {

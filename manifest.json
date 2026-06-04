@@ -38,6 +38,7 @@
         "https://administration-etrangers-en-france.interieur.gouv.fr/*"
       ],
       "js": [
+        "src/shared-logic.js",
         "src/status-data.js",
         "src/content.js"
       ],
