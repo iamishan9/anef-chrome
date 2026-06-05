@@ -51,6 +51,21 @@ assert.equal(
 );
 
 assert.equal(
+  logic.selectStepDate({
+    step: { id: 7, label: "Entretien d'assimilation" },
+    currentStepId: 7,
+    currentDate: statusDate,
+    codeDates: [statusDate],
+    keyDates: [
+      { label: "Notification entretien assimilation", date: "2026-06-05T10:00:00.000Z", source: "notifications" },
+      { label: "Status date", date: statusDate, source: "dossier-statut" },
+    ],
+  }),
+  statusDate,
+  "notification receipt dates should not be used as the interview appointment date",
+);
+
+assert.equal(
   logic.isNationalityPage(
     "https://administration-etrangers-en-france.interieur.gouv.fr/particuliers/#/compte",
     "Mon compte Mes informations",

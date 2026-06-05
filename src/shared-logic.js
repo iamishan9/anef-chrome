@@ -37,10 +37,12 @@
   }
 
   function specificKeyDatesForStep(step, keyDates) {
+    const stepLabel = normalizeText(step?.label);
     const primary = sortedDates((keyDates || [])
       .filter((item) => item?.date && isPrimaryStepDate(step?.label, item.label))
       .map((item) => item.date));
     if (primary.length) return primary;
+    if (stepLabel.includes("assimilation")) return [];
 
     return sortedDates((keyDates || [])
       .filter((item) => item?.date && keyDateMatchesStep(step?.label, item.label))

@@ -345,6 +345,40 @@ QJNdXtE3G7SjkDOn36yZSaXp
     return output;
   }
 
+  function addAssimilationInterviewDate(output, date, source, path) {
+    if (output.some((item) => item.label === "Assimilation interview" && item.date === date && item.source === source)) return;
+    output.push({
+      label: "Assimilation interview",
+      date,
+      source,
+      meta: { kind: "appointment", path },
+    });
+  }
+
+  function extractAssimilationInterviewDates(payload, source, path = "root", output = []) {
+    if (!payload || typeof payload !== "object") return output;
+    if (Array.isArray(payload)) {
+      payload.forEach((item, index) => extractAssimilationInterviewDates(item, source, `${path}[${index}]`, output));
+      return output;
+    }
+
+    const nested = payload.entretien_assimilation || payload.entretienAssimilation;
+    const nestedDate = normalizeDate(nested?.date_rdv || nested?.dateRdv);
+    if (nestedDate) {
+      addAssimilationInterviewDate(output, nestedDate, source, `${path}.entretien_assimilation.date_rdv`);
+    }
+
+    const directDate = normalizeDate(payload.date_rdv || payload.dateRdv);
+    if (directDate && /entretien|assimilation/i.test(path)) {
+      addAssimilationInterviewDate(output, directDate, source, `${path}.date_rdv`);
+    }
+
+    for (const [key, value] of Object.entries(payload)) {
+      if (value && typeof value === "object") extractAssimilationInterviewDates(value, source, `${path}.${key}`, output);
+    }
+    return output;
+  }
+
   function extractKeyDates(payload, source) {
     const dates = [];
     const add = (label, value) => {
@@ -352,7 +386,7 @@ QJNdXtE3G7SjkDOn36yZSaXp
       if (date) dates.push({ label, date, source });
     };
 
-    add("Assimilation interview", payload?.entretien_assimilation?.date_rdv);
+    dates.push(...extractAssimilationInterviewDates(payload, source));
     add("Complement requested", latestComplementDate(payload?.demande_complement));
     add("Status date", payload?.date_statut || payload?.dossier?.date_statut || payload?.data?.date_statut);
 

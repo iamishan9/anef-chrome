@@ -106,6 +106,10 @@
     return new Intl.DateTimeFormat("fr-FR", options).format(date);
   }
 
+  function shouldShowTimeForLabel(label) {
+    return normalizeText(label).includes("assimilation");
+  }
+
   function daysSince(value) {
     const iso = normalizeDate(value);
     if (!iso) return null;
@@ -551,7 +555,7 @@
       if (activeId === step.id) item.classList.add("anef-tracker-current-step");
 
       if (date) {
-        item.appendChild(ce("span", { className: "anef-tracker-step-date" }, formatDate(date)));
+        item.appendChild(ce("span", { className: "anef-tracker-step-date" }, formatDate(date, shouldShowTimeForLabel(step.label))));
       }
       if (activeId === step.id && state.current?.code) {
         item.appendChild(ce("span", { className: "anef-tracker-step-code" }, state.current.code));
@@ -635,7 +639,7 @@
     section.appendChild(ce("h3", {}, "Real dates found in ANEF APIs"));
     const grid = ce("div", { className: "anef-tracker-keydates" });
     for (const entry of entries) {
-      grid.appendChild(keyDate(`Step ${entry.step.id}: ${entry.step.label}`, formatDate(entry.date)));
+      grid.appendChild(keyDate(`Step ${entry.step.id}: ${entry.step.label}`, formatDate(entry.date, shouldShowTimeForLabel(entry.step.label))));
     }
     section.appendChild(grid);
     container.appendChild(section);
@@ -652,7 +656,7 @@
     for (const id of state.decretIds || []) grid.appendChild(keyDate("ANEF decree id", id));
     for (const item of useful) {
       if (item.meta?.decretId) continue;
-      grid.appendChild(keyDate(item.label, item.date ? formatDate(item.date) : "Found"));
+      grid.appendChild(keyDate(item.label, item.date ? formatDate(item.date, shouldShowTimeForLabel(item.label)) : "Found"));
     }
     section.appendChild(grid);
     container.appendChild(section);
