@@ -26,6 +26,8 @@
   function keyDateMatchesStep(stepLabel, itemLabel) {
     const step = normalizeText(stepLabel);
     const label = normalizeText(itemLabel);
+    const timelineLabel = label.replace(/^timeline:\s*/, "");
+    if (timelineLabel && timelineLabel === step) return true;
     return (step.includes("assimilation") && label.includes("assimilation"))
       || (step.includes("recepisse") && label.includes("recepisse"));
   }

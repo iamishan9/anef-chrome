@@ -66,6 +66,19 @@ assert.equal(
 );
 
 assert.equal(
+  logic.selectStepDate({
+    step: { id: 1, label: "Demande envoyee" },
+    currentStepId: 7,
+    codeDates: [],
+    keyDates: [
+      { label: "Timeline: Demande envoyee", date: "2026-01-12T00:00:00.000Z", source: "frise-stepper" },
+    ],
+  }),
+  "2026-01-12T00:00:00.000Z",
+  "timeline dates from the ANEF frise should map back to their visual step",
+);
+
+assert.equal(
   logic.isNationalityPage(
     "https://administration-etrangers-en-france.interieur.gouv.fr/particuliers/#/compte",
     "Mon compte Mes informations",
