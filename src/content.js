@@ -4,7 +4,7 @@
   const STORE_KEY = "anefTrackerState";
   const DATA = window.ANEF_TRACKER_DATA || { statuses: {}, phases: {}, statusOrder: [], negativeOrder: [], sources: [] };
   const LOGIC = window.ANEF_TRACKER_LOGIC || {};
-  const EXTENSION_VERSION = chrome.runtime.getManifest?.()?.version || "0.2.1";
+  const EXTENSION_VERSION = chrome.runtime.getManifest?.()?.version || "0.2.2";
 
   const PHASE_COPY_FR = {
     preparation: { label: "Preparation et controle formel", estimate: "1 a 3 mois" },
@@ -180,12 +180,14 @@
     return current?.code || "En attente de connexion ANEF";
   }
 
-  function summaryTextFr(current, changedDate, stepId) {
-    if (!current?.code) return "Ouvrez votre espace nationalite pour charger le dernier statut API.";
-    const parts = [`Statut ${current.code}`];
-    if (changedDate) parts.push(`modifie le ${formatDate(changedDate)}`);
-    if (stepId) parts.push(`etape ${stepId}`);
-    return parts.join(" - ");
+  function currentStepInfo() {
+    const stepId = currentStepId();
+    if (!stepId) return null;
+    return activeStepSet().find((step) => step.id === stepId) || { id: stepId, label: "Etape inconnue" };
+  }
+
+  function updateDateText(value) {
+    return value ? `Mis a jour le ${formatDate(value, true)}` : "Date de mise a jour non exposee par ANEF";
   }
 
   function statusInfo(code) {
@@ -775,11 +777,13 @@
   function renderSummaryCard(container) {
     const current = state.current;
     const changedDate = current?.date || current?.observedAt;
-    const stepId = currentStepId();
+    const step = currentStepInfo();
 
     const card = ce("button", { type: "button", className: "anef-tracker-home-card", "aria-label": "Ouvrir les details du suivi API ANEF" });
     const icon = ce("span", { className: "anef-tracker-home-icon", "aria-hidden": "true" });
-    icon.appendChild(ce("span", {}, "i"));
+    icon.appendChild(ce("span", { className: "anef-tracker-icon-line anef-tracker-icon-line-one" }));
+    icon.appendChild(ce("span", { className: "anef-tracker-icon-line anef-tracker-icon-line-two" }));
+    icon.appendChild(ce("span", { className: "anef-tracker-icon-line anef-tracker-icon-line-three" }));
     card.appendChild(icon);
 
     const title = ce("span", { className: "anef-tracker-home-title" }, "Suivi API ANEF");
@@ -789,7 +793,14 @@
     const status = ce("span", { className: "anef-tracker-home-status" }, currentStatusText(current));
     card.appendChild(status);
 
-    card.appendChild(ce("span", { className: "anef-tracker-home-summary" }, summaryTextFr(current, changedDate, stepId)));
+    const details = ce("span", { className: "anef-tracker-home-details" });
+    if (current?.code) {
+      details.appendChild(ce("span", { className: "anef-tracker-home-detail anef-tracker-home-detail-step" }, step ? `Etape ${step.id} - ${step.label}` : "Etape visuelle non exposee par ANEF"));
+      details.appendChild(ce("span", { className: "anef-tracker-home-detail" }, updateDateText(changedDate)));
+    } else {
+      details.appendChild(ce("span", { className: "anef-tracker-home-detail" }, "Ouvrez votre espace nationalite pour charger le dernier statut API."));
+    }
+    card.appendChild(details);
     card.appendChild(ce("span", { className: "anef-tracker-home-arrow", "aria-hidden": "true" }, "->"));
     card.addEventListener("click", showDetailsModal);
     container.appendChild(card);
@@ -800,6 +811,7 @@
     const info = statusInfo(current?.code);
     const changedDate = current?.date || current?.observedAt;
     const expected = expectedRangeFr(info);
+    const step = currentStepInfo();
 
     const card = ce("section", { className: "anef-tracker-current" });
     const title = ce("div", { className: "anef-tracker-inline-title" });
@@ -818,9 +830,9 @@
 
     if (current?.code) {
       const meta = ce("div", { className: "anef-tracker-meta-grid" });
-      meta.appendChild(metaItem("Etape visuelle", currentStepId() ? `Etape ${currentStepId()}` : "Inconnue"));
+      meta.appendChild(metaItem("Etape visuelle", step ? `Etape ${step.id} - ${step.label}` : "Inconnue"));
       meta.appendChild(metaItem("Phase", phaseLabelFr(info)));
-      meta.appendChild(metaItem("Date observee", changedDate ? `${formatDate(changedDate)}${relativeAge(changedDate) ? ` (${relativeAge(changedDate)})` : ""}` : "Non exposee par ANEF"));
+      meta.appendChild(metaItem("Date observee", changedDate ? `${formatDate(changedDate, true)}${relativeAge(changedDate) ? ` (${relativeAge(changedDate)})` : ""}` : "Non exposee par ANEF"));
       meta.appendChild(metaItem("Prochaine estimation", expected));
       card.appendChild(meta);
 
