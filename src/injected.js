@@ -346,9 +346,9 @@ QJNdXtE3G7SjkDOn36yZSaXp
   }
 
   function addAssimilationInterviewDate(output, date, source, path) {
-    if (output.some((item) => item.label === "Assimilation interview" && item.date === date && item.source === source)) return;
+    if (output.some((item) => item.label === "Entretien d'assimilation" && item.date === date && item.source === source)) return;
     output.push({
-      label: "Assimilation interview",
+      label: "Entretien d'assimilation",
       date,
       source,
       meta: { kind: "appointment", path },
@@ -387,12 +387,12 @@ QJNdXtE3G7SjkDOn36yZSaXp
     };
 
     dates.push(...extractAssimilationInterviewDates(payload, source));
-    add("Complement requested", latestComplementDate(payload?.demande_complement));
-    add("Status date", payload?.date_statut || payload?.dossier?.date_statut || payload?.data?.date_statut);
+    add("Complement demande", latestComplementDate(payload?.demande_complement));
+    add("Date du statut", payload?.date_statut || payload?.dossier?.date_statut || payload?.data?.date_statut);
 
     const decretIds = Array.from(extractDecretIds(payload));
     for (const id of decretIds) {
-      dates.push({ label: `ANEF decree id ${id}`, date: null, source, meta: { decretId: id } });
+      dates.push({ label: `Identifiant decret ANEF ${id}`, date: null, source, meta: { decretId: id } });
     }
     if (source === "frise-stepper") {
       dates.push(...extractFriseDates(payload, source));
@@ -409,7 +409,7 @@ QJNdXtE3G7SjkDOn36yZSaXp
     const date = pickDate(payload);
     if (date) {
       const label = payload.title || payload.label || payload.libelle || payload.name || payload.etape || payload.step || path;
-      output.push({ label: `Timeline: ${String(label)}`, date, source });
+      output.push({ label: `Frise : ${String(label)}`, date, source });
     }
     for (const [key, value] of Object.entries(payload)) {
       if (value && typeof value === "object") extractFriseDates(value, source, `${path}.${key}`, output);
@@ -501,7 +501,7 @@ QJNdXtE3G7SjkDOn36yZSaXp
       const current = currentCode ? { code: currentCode, date: currentDate, source: "dossier-stepper" } : null;
       await ingestPayload("dossier-stepper", ENDPOINTS.stepper, stepper, { current, dossierId, dossierNumber });
     } catch (error) {
-      send("status", { state: "waiting_for_login", message: "Waiting for an authenticated ANEF session." });
+      send("status", { state: "waiting_for_login", message: "En attente d'une session ANEF authentifiee." });
       return;
     }
 

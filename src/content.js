@@ -4,7 +4,31 @@
   const STORE_KEY = "anefTrackerState";
   const DATA = window.ANEF_TRACKER_DATA || { statuses: {}, phases: {}, statusOrder: [], negativeOrder: [], sources: [] };
   const LOGIC = window.ANEF_TRACKER_LOGIC || {};
-  const EXTENSION_VERSION = chrome.runtime.getManifest?.()?.version || "0.2.0";
+  const EXTENSION_VERSION = chrome.runtime.getManifest?.()?.version || "0.2.1";
+
+  const PHASE_COPY_FR = {
+    preparation: { label: "Preparation et controle formel", estimate: "1 a 3 mois" },
+    instruction: { label: "Instruction en prefecture", estimate: "6 a 12 mois" },
+    entretien: { label: "Completude, controles et entretien", estimate: "1 a 4 mois" },
+    decision_pref: { label: "Decision de la prefecture", estimate: "2 a 6 mois" },
+    sdanf: { label: "Controle SDANF / SCEC", estimate: "6 a 18 mois" },
+    decret: { label: "Preparation du decret", estimate: "1 a 3 mois" },
+    journal: { label: "Publication au Journal officiel", estimate: "quelques jours a quelques semaines" },
+    final_positive: { label: "Naturalisation / etape finale positive", estimate: "termine" },
+    negative: { label: "Decision negative, recours ou cloture", estimate: "variable" },
+    unknown: { label: "Phase inconnue", estimate: "variable" },
+  };
+
+  const EXPECTED_COPY_FR = {
+    INSTRUCTION_A_AFFECTER: "Souvent 3 a 9 mois pour cette file; la phase prefecture reste plus large.",
+    CONTROLE_A_AFFECTER: "Souvent 6 a 18 mois. C'est la file passive la plus longue dans les observations publiques.",
+    CONTROLE_A_EFFECTUER: "Souvent quelques semaines a 4 mois, mais cela varie fortement selon le dossier.",
+    CONTROLE_EN_ATTENTE_PEC: "Confiance faible : des retours publics de mai 2026 signalent des dossiers bloques ici depuis mars 2026.",
+    CONTROLE_PEC_A_FAIRE: "Dans la phase SDANF / SCEC, avec des delais tres variables selon le profil.",
+    PRETE_POUR_INSERTION_DECRET: "Souvent quelques jours a quelques semaines.",
+    INSEREE_DANS_DECRET: "Souvent quelques jours a quelques semaines avant la publication au Journal officiel.",
+    DEMANDE_EN_COURS_RAPO: "Environ 4 mois est souvent cite pour le RAPO, mais cela varie.",
+  };
 
   const STEP_SETS = {
     completeScec: [
@@ -46,7 +70,7 @@
     dossierId: null,
     dossierNumber: null,
     friseInfo: null,
-    runtimeStatus: "Starting",
+    runtimeStatus: "Demarrage",
     lastUpdatedAt: null,
   };
   let root = null;
@@ -120,23 +144,55 @@
   function relativeAge(value) {
     const days = daysSince(value);
     if (days == null) return "";
-    if (days === 0) return "today";
-    if (days === 1) return "1 day ago";
-    if (days < 31) return `${days} days ago`;
+    if (days === 0) return "aujourd'hui";
+    if (days === 1) return "hier";
+    if (days < 31) return `il y a ${days} jours`;
     const months = Math.floor(days / 30);
-    if (months < 12) return `${months} month${months > 1 ? "s" : ""} ago`;
+    if (months < 12) return `il y a ${months} mois`;
     const years = Math.floor(days / 365);
     const remMonths = Math.floor((days % 365) / 30);
     return remMonths
-      ? `${years} year${years > 1 ? "s" : ""} ${remMonths} month${remMonths > 1 ? "s" : ""} ago`
-      : `${years} year${years > 1 ? "s" : ""} ago`;
+      ? `il y a ${years} an${years > 1 ? "s" : ""} et ${remMonths} mois`
+      : `il y a ${years} an${years > 1 ? "s" : ""}`;
+  }
+
+  function runtimeStatusLabel(value) {
+    const text = String(value || "");
+    const normalized = normalizeText(text);
+    if (!normalized) return "Pret";
+    if (normalized.includes("starting") || normalized.includes("demarrage")) return "Demarrage";
+    if (normalized.includes("loaded from anef") || normalized.includes("charge")) return "Donnees ANEF chargees";
+    if (normalized.includes("refresh")) return "Actualisation des API ANEF";
+    if (normalized.includes("waiting") || normalized.includes("attente")) return "En attente des donnees ANEF";
+    if (normalized.includes("ready") || normalized.includes("pret")) return "Pret";
+    return text;
+  }
+
+  function phaseLabelFr(info) {
+    return PHASE_COPY_FR[info?.phase]?.label || PHASE_COPY_FR.unknown.label;
+  }
+
+  function expectedRangeFr(info) {
+    return EXPECTED_COPY_FR[info?.code] || PHASE_COPY_FR[info?.phase]?.estimate || PHASE_COPY_FR.unknown.estimate;
+  }
+
+  function currentStatusText(current) {
+    return current?.code || "En attente de connexion ANEF";
+  }
+
+  function summaryTextFr(current, changedDate, stepId) {
+    if (!current?.code) return "Ouvrez votre espace nationalite pour charger le dernier statut API.";
+    const parts = [`Statut ${current.code}`];
+    if (changedDate) parts.push(`modifie le ${formatDate(changedDate)}`);
+    if (stepId) parts.push(`etape ${stepId}`);
+    return parts.join(" - ");
   }
 
   function statusInfo(code) {
     return {
       code,
-      label: code || "Unknown status",
-      detail: "This status was found in ANEF data but is not in the local dictionary yet.",
+      label: code || "Statut inconnu",
+      detail: "Ce statut a ete trouve dans les donnees ANEF, mais il n'est pas encore decrit localement.",
       phase: "unknown",
       next: [],
       ...(DATA.statuses[code] || {}),
@@ -144,7 +200,7 @@
   }
 
   function phaseInfo(phaseKey) {
-    return DATA.phases[phaseKey] || { label: "Unknown phase", estimate: "unknown" };
+    return DATA.phases[phaseKey] || { label: "Phase inconnue", estimate: "variable" };
   }
 
   function timelineKey(entry) {
@@ -238,7 +294,7 @@
     const previousCurrent = state.current ? { ...state.current } : null;
 
     if (detail.type === "status") {
-      state.runtimeStatus = detail.data?.message || detail.data?.state || "Waiting";
+      state.runtimeStatus = runtimeStatusLabel(detail.data?.message || detail.data?.state || "En attente");
       scheduleRender();
       persist(previousCurrent).catch(() => {});
       return;
@@ -246,7 +302,7 @@
 
     if (detail.type !== "payload") return;
     const payload = detail.data || {};
-    state.runtimeStatus = "Loaded from ANEF";
+    state.runtimeStatus = "Donnees ANEF chargees";
     state.dossierId = payload.dossierId || state.dossierId;
     state.dossierNumber = payload.dossierNumber || state.dossierNumber;
     state.friseInfo = payload.friseInfo || state.friseInfo;
@@ -273,7 +329,7 @@
 
   function requestRefresh() {
     window.dispatchEvent(new CustomEvent("ANEF_TRACKER_REFRESH"));
-    state.runtimeStatus = "Refreshing ANEF APIs";
+    state.runtimeStatus = "Actualisation des API ANEF";
     scheduleRender();
   }
 
@@ -652,7 +708,7 @@
       if (activeId === step.id && state.current?.code) {
         item.appendChild(ce("span", { className: "anef-tracker-step-code" }, state.current.code));
         const since = relativeAge(state.current.date || state.current.observedAt);
-        item.appendChild(ce("span", { className: "anef-tracker-step-note" }, since ? `Changed ${formatDate(state.current.date || state.current.observedAt)} (${since})` : "Current ANEF API status"));
+        item.appendChild(ce("span", { className: "anef-tracker-step-note" }, since ? `Modifie le ${formatDate(state.current.date || state.current.observedAt)} (${since})` : "Statut API ANEF actuel"));
       }
     }
   }
@@ -685,11 +741,11 @@
     const existing = document.getElementById("anef-tracker-modal");
     if (existing) existing.remove();
 
-    const overlay = ce("div", { id: "anef-tracker-modal", role: "dialog", "aria-modal": "true", "aria-label": "ANEF API tracker details" });
+    const overlay = ce("div", { id: "anef-tracker-modal", role: "dialog", "aria-modal": "true", "aria-label": "Details du suivi API ANEF" });
     const panel = ce("div", { className: "anef-tracker-modal-panel" });
     const header = ce("div", { className: "anef-tracker-modal-header" });
-    header.appendChild(ce("h2", {}, "ANEF API tracker"));
-    const close = ce("button", { type: "button", className: "anef-tracker-close", "aria-label": "Close details" }, "x");
+    header.appendChild(ce("h2", {}, "Suivi API ANEF"));
+    const close = ce("button", { type: "button", className: "anef-tracker-close", "aria-label": "Fermer les details" }, "x");
     const closeModal = () => {
       overlay.remove();
       document.removeEventListener("keydown", onEscape);
@@ -718,26 +774,22 @@
 
   function renderSummaryCard(container) {
     const current = state.current;
-    const info = statusInfo(current?.code);
     const changedDate = current?.date || current?.observedAt;
     const stepId = currentStepId();
 
-    const card = ce("button", { type: "button", className: "anef-tracker-home-card", "aria-label": "Open ANEF API tracker details" });
+    const card = ce("button", { type: "button", className: "anef-tracker-home-card", "aria-label": "Ouvrir les details du suivi API ANEF" });
     const icon = ce("span", { className: "anef-tracker-home-icon", "aria-hidden": "true" });
     icon.appendChild(ce("span", {}, "i"));
     card.appendChild(icon);
 
-    const title = ce("span", { className: "anef-tracker-home-title" }, "ANEF API tracker");
+    const title = ce("span", { className: "anef-tracker-home-title" }, "Suivi API ANEF");
     card.appendChild(title);
     card.appendChild(ce("span", { className: "anef-tracker-home-version" }, `v${EXTENSION_VERSION}`));
 
-    const status = ce("span", { className: "anef-tracker-home-status" }, current?.code || "Waiting for ANEF login");
+    const status = ce("span", { className: "anef-tracker-home-status" }, currentStatusText(current));
     card.appendChild(status);
 
-    const summary = current?.code
-      ? `${info.label}${changedDate ? ` - changed ${formatDate(changedDate)}` : ""}${stepId ? ` - step ${stepId}` : ""}`
-      : "Open your nationality dashboard to load the latest API status.";
-    card.appendChild(ce("span", { className: "anef-tracker-home-summary" }, summary));
+    card.appendChild(ce("span", { className: "anef-tracker-home-summary" }, summaryTextFr(current, changedDate, stepId)));
     card.appendChild(ce("span", { className: "anef-tracker-home-arrow", "aria-hidden": "true" }, "->"));
     card.addEventListener("click", showDetailsModal);
     container.appendChild(card);
@@ -746,29 +798,30 @@
   function renderCurrent(container) {
     const current = state.current;
     const info = statusInfo(current?.code);
-    const phase = phaseInfo(info.phase);
     const changedDate = current?.date || current?.observedAt;
-    const expected = info.expectedOverride || phase.estimate;
+    const expected = expectedRangeFr(info);
 
     const card = ce("section", { className: "anef-tracker-current" });
     const title = ce("div", { className: "anef-tracker-inline-title" });
-    title.appendChild(ce("strong", {}, "ANEF API tracker"));
-    title.appendChild(ce("span", {}, state.runtimeStatus || "Ready"));
+    title.appendChild(ce("strong", {}, "Suivi API ANEF"));
+    title.appendChild(ce("span", {}, runtimeStatusLabel(state.runtimeStatus)));
     card.appendChild(title);
 
     const codeLine = ce("div", { className: "anef-tracker-code-row" });
-    codeLine.appendChild(ce("span", { className: "anef-tracker-current-code" }, current?.code || "Waiting for ANEF login"));
-    if (current?.code && changedDate) codeLine.appendChild(ce("span", { className: "anef-tracker-current-date" }, `Changed ${formatDate(changedDate)}`));
+    codeLine.appendChild(ce("span", { className: "anef-tracker-current-code" }, currentStatusText(current)));
+    if (current?.code && changedDate) codeLine.appendChild(ce("span", { className: "anef-tracker-current-date" }, `Modifie le ${formatDate(changedDate)}`));
     card.appendChild(codeLine);
 
-    card.appendChild(ce("p", {}, current?.code ? `${info.label}. ${info.detail}` : "Open your ANEF dashboard after logging in; the extension will insert real API dates on the frise above."));
+    card.appendChild(ce("p", {}, current?.code
+      ? "Statut API actuel detecte dans les donnees ANEF. Les dates ci-dessous viennent des endpoints ANEF exposes sur la page nationalite."
+      : "Ouvrez votre espace ANEF apres connexion; l'extension ajoutera les vraies dates API sur la frise."));
 
     if (current?.code) {
       const meta = ce("div", { className: "anef-tracker-meta-grid" });
-      meta.appendChild(metaItem("Visual step", currentStepId() ? `Step ${currentStepId()}` : "Unknown"));
-      meta.appendChild(metaItem("Phase", phase.label));
-      meta.appendChild(metaItem("Observed date", changedDate ? `${formatDate(changedDate)}${relativeAge(changedDate) ? ` (${relativeAge(changedDate)})` : ""}` : "Not exposed by ANEF"));
-      meta.appendChild(metaItem("Expected next range", expected));
+      meta.appendChild(metaItem("Etape visuelle", currentStepId() ? `Etape ${currentStepId()}` : "Inconnue"));
+      meta.appendChild(metaItem("Phase", phaseLabelFr(info)));
+      meta.appendChild(metaItem("Date observee", changedDate ? `${formatDate(changedDate)}${relativeAge(changedDate) ? ` (${relativeAge(changedDate)})` : ""}` : "Non exposee par ANEF"));
+      meta.appendChild(metaItem("Prochaine estimation", expected));
       card.appendChild(meta);
 
       const next = Array.isArray(info.next) ? info.next : [];
@@ -785,7 +838,7 @@
   function metaItem(label, value) {
     const wrap = ce("div", { className: "anef-tracker-meta-item" });
     wrap.appendChild(ce("span", {}, label));
-    wrap.appendChild(ce("strong", {}, value || "Unknown"));
+    wrap.appendChild(ce("strong", {}, value || "Inconnu"));
     return wrap;
   }
 
@@ -797,10 +850,10 @@
     if (!entries.length) return;
 
     const section = ce("section", { className: "anef-tracker-section" });
-    section.appendChild(ce("h3", {}, "Real dates found in ANEF APIs"));
+    section.appendChild(ce("h3", {}, "Dates reelles trouvees dans les API ANEF"));
     const grid = ce("div", { className: "anef-tracker-keydates" });
     for (const entry of entries) {
-      grid.appendChild(keyDate(`Step ${entry.step.id}: ${entry.step.label}`, formatDate(entry.date, shouldShowTimeForLabel(entry.step.label))));
+      grid.appendChild(keyDate(`Etape ${entry.step.id}: ${entry.step.label}`, formatDate(entry.date, shouldShowTimeForLabel(entry.step.label))));
     }
     section.appendChild(grid);
     container.appendChild(section);
@@ -810,14 +863,14 @@
     const useful = state.keyDates.filter((item) => item.date || item.meta?.decretId).slice(-10);
     if (!useful.length && !state.decretIds.length && !state.dossierId && !state.dossierNumber) return;
     const section = ce("section", { className: "anef-tracker-section" });
-    section.appendChild(ce("h3", {}, "Other API data"));
+    section.appendChild(ce("h3", {}, "Autres donnees API"));
     const grid = ce("div", { className: "anef-tracker-keydates" });
-    if (state.dossierNumber) grid.appendChild(keyDate("Dossier number", state.dossierNumber));
-    if (state.dossierId) grid.appendChild(keyDate("Internal dossier id", state.dossierId));
-    for (const id of state.decretIds || []) grid.appendChild(keyDate("ANEF decree id", id));
+    if (state.dossierNumber) grid.appendChild(keyDate("Numero de dossier", state.dossierNumber));
+    if (state.dossierId) grid.appendChild(keyDate("Identifiant dossier interne", state.dossierId));
+    for (const id of state.decretIds || []) grid.appendChild(keyDate("Identifiant decret ANEF", id));
     for (const item of useful) {
       if (item.meta?.decretId) continue;
-      grid.appendChild(keyDate(item.label, item.date ? formatDate(item.date, shouldShowTimeForLabel(item.label)) : "Found"));
+      grid.appendChild(keyDate(item.label, item.date ? formatDate(item.date, shouldShowTimeForLabel(item.label)) : "Trouve"));
     }
     section.appendChild(grid);
     container.appendChild(section);
@@ -826,15 +879,15 @@
   function keyDate(label, value) {
     const wrap = ce("div", { className: "anef-tracker-keydate" });
     wrap.appendChild(ce("span", {}, label));
-    wrap.appendChild(ce("strong", {}, value || "Unknown"));
+    wrap.appendChild(ce("strong", {}, value || "Inconnu"));
     return wrap;
   }
 
   function renderActions(container) {
     const actions = ce("div", { className: "anef-tracker-actions" });
-    const refresh = ce("button", { type: "button" }, "Refresh API");
+    const refresh = ce("button", { type: "button" }, "Actualiser l'API");
     refresh.addEventListener("click", requestRefresh);
-    const exportButton = ce("button", { type: "button" }, "Export JSON");
+    const exportButton = ce("button", { type: "button" }, "Exporter JSON");
     exportButton.addEventListener("click", exportJson);
     actions.append(refresh, exportButton);
     container.appendChild(actions);
@@ -842,7 +895,7 @@
 
   function renderSources(container) {
     const section = ce("section", { className: "anef-tracker-sources" });
-    section.appendChild(ce("p", {}, "Only dates exposed by ANEF APIs are added to the frise. Estimates are community ranges, not official commitments."));
+    section.appendChild(ce("p", {}, "Seules les dates exposees par les API ANEF sont ajoutees a la frise. Les estimations sont indicatives et ne sont pas des engagements officiels."));
     const sourceList = ce("div", { className: "anef-tracker-source-list" });
     for (const source of DATA.sources || []) {
       sourceList.appendChild(ce("a", { href: source.url, target: "_blank", rel: "noreferrer" }, source.label));

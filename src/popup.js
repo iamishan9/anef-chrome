@@ -35,7 +35,7 @@
   }
 
   function statusInfo(code) {
-    return DATA.statuses[code] || { label: code || "Unknown" };
+    return DATA.statuses[code] || { label: code || "Statut inconnu" };
   }
 
   async function loadState() {
@@ -47,13 +47,12 @@
     const container = qs("#current");
     container.textContent = "";
     if (!state?.current?.code) {
-      container.appendChild(ce("span", { className: "muted" }, "Open ANEF and log in to load status data."));
+      container.appendChild(ce("span", { className: "muted" }, "Ouvrez ANEF et connectez-vous pour charger les donnees."));
       return;
     }
-    const info = statusInfo(state.current.code);
     container.appendChild(ce("span", { className: "code" }, state.current.code));
-    container.appendChild(ce("strong", {}, info.label));
-    container.appendChild(ce("span", { className: "date" }, `Changed: ${formatDate(state.current.date || state.current.observedAt)}`));
+    container.appendChild(ce("strong", {}, "Statut API actuel"));
+    container.appendChild(ce("span", { className: "date" }, `Modifie le ${formatDate(state.current.date || state.current.observedAt)}`));
     if (state.dossierNumber) container.appendChild(ce("span", { className: "muted" }, `Dossier: ${state.dossierNumber}`));
   }
 
@@ -70,8 +69,7 @@
       const item = ce("li");
       item.appendChild(ce("code", {}, entry.code));
       item.appendChild(ce("span", { className: "date" }, formatDate(entry.date || entry.observedAt)));
-      const info = statusInfo(entry.code);
-      item.appendChild(ce("span", { className: "muted" }, `${info.label}${entry.source ? ` - ${entry.source}` : ""}`));
+      item.appendChild(ce("span", { className: "muted" }, entry.source || "ANEF"));
       list.appendChild(item);
     }
   }
@@ -88,10 +86,10 @@
 
   async function boot() {
     const state = await loadState();
-    qs("#subtitle").textContent = state?.lastUpdatedAt ? `Updated ${formatDate(state.lastUpdatedAt)}` : "No local data yet";
+    qs("#subtitle").textContent = state?.lastUpdatedAt ? `Mis a jour le ${formatDate(state.lastUpdatedAt)}` : "Aucune donnee locale";
     renderCurrent(state);
-    renderList("#history", (state?.observations || []).slice().reverse(), "No observed status changes yet.");
-    renderList("#timeline", state?.timeline || [], "No dated ANEF steps yet.");
+    renderList("#history", (state?.observations || []).slice().reverse(), "Aucun changement de statut observe.");
+    renderList("#timeline", state?.timeline || [], "Aucune etape ANEF datee.");
     qs("#export").addEventListener("click", () => exportJson(state));
   }
 

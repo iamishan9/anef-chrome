@@ -56,7 +56,7 @@ const keyDates = extractKeyDates({
 }, "dossier-details");
 
 const extractedDates = Array.from(keyDates
-  .filter((item) => item.label === "Assimilation interview")
+  .filter((item) => item.label === "Entretien d'assimilation")
   .map((item) => item.date));
 
 assert.deepEqual(

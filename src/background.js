@@ -1,11 +1,11 @@
 chrome.runtime.onMessage.addListener((message) => {
   if (!message || message.type !== "ANEF_TRACKER_STATUS_CHANGED") return;
-  const previousCode = message.previous?.code || "previous status";
-  const currentCode = message.current?.code || "new status";
+  const previousCode = message.previous?.code || "statut precedent";
+  const currentCode = message.current?.code || "nouveau statut";
   chrome.notifications.create({
     type: "basic",
     iconUrl: chrome.runtime.getURL("icons/icon128.png"),
-    title: "ANEF status changed",
+    title: "Statut ANEF modifie",
     message: `${previousCode} -> ${currentCode}`,
   });
 });
