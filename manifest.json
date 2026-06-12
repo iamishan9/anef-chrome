@@ -4,7 +4,7 @@
   "short_name": "ANEF Tracker",
   "version": "0.2.2",
   "description": "Shows hidden ANEF naturalization status codes, local history, dated steps, and next-state estimates.",
-  "author": "Ishan Gautam",
+  "author": "zephyrus.code",
   "homepage_url": "https://administration-etrangers-en-france.interieur.gouv.fr/",
   "icons": {
     "16": "icons/icon16.png",
