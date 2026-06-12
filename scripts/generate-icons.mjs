@@ -73,7 +73,7 @@ function line(pixels, size, x1, y1, x2, y2, width, color) {
 
 function drawIcon(size) {
   const pixels = Buffer.alloc(size * size * 4);
-  const bg = hex("#f7f9ff");
+  const bg = hex("#f7f7ff");
   for (let i = 0; i < pixels.length; i += 4) {
     pixels[i] = bg[0];
     pixels[i + 1] = bg[1];
@@ -82,22 +82,27 @@ function drawIcon(size) {
   }
 
   const pad = Math.max(2, Math.round(size * 0.12));
+  const blue = hex("#000091");
+  const red = hex("#e1000f");
+  const gray = hex("#d7d7f8");
   fillRect(pixels, size, pad, pad, size - pad * 2, size - pad * 2, hex("#ffffff"));
+  fillRect(pixels, size, pad, size - pad * 2.2, size - pad * 2, Math.max(2, size * 0.08), blue);
 
-  const flagW = Math.max(3, Math.round(size * 0.16));
-  fillRect(pixels, size, pad, pad, flagW / 3, size - pad * 2, hex("#000091"));
-  fillRect(pixels, size, pad + flagW / 3, pad, flagW / 3, size - pad * 2, hex("#ffffff"));
-  fillRect(pixels, size, pad + (flagW * 2) / 3, pad, flagW / 3, size - pad * 2, hex("#e1000f"));
+  const iconX = Math.round(size * 0.34);
+  const iconY = Math.round(size * 0.31);
+  const iconW = Math.round(size * 0.32);
+  const iconH = Math.round(size * 0.30);
+  fillRect(pixels, size, iconX, iconY, iconW, iconH, hex("#ffffff"));
+  line(pixels, size, iconX, iconY, iconX + iconW, iconY, Math.max(1, size * 0.035), blue);
+  line(pixels, size, iconX, iconY, iconX, iconY + iconH, Math.max(1, size * 0.035), blue);
+  line(pixels, size, iconX + iconW, iconY, iconX + iconW, iconY + iconH, Math.max(1, size * 0.035), blue);
+  line(pixels, size, iconX, iconY + iconH, iconX + iconW, iconY + iconH, Math.max(1, size * 0.035), blue);
+  line(pixels, size, iconX + size * 0.08, iconY + size * 0.10, iconX + iconW - size * 0.08, iconY + size * 0.10, Math.max(1, size * 0.02), gray);
+  line(pixels, size, iconX + size * 0.08, iconY + size * 0.18, iconX + iconW - size * 0.08, iconY + size * 0.18, Math.max(1, size * 0.02), gray);
 
-  const x = Math.round(size * 0.56);
-  const y1 = Math.round(size * 0.27);
-  const y2 = Math.round(size * 0.50);
-  const y3 = Math.round(size * 0.73);
-  line(pixels, size, x, y1, x, y3, Math.max(2, size * 0.05), hex("#c8d2e3"));
-  circle(pixels, size, x, y1, Math.max(2, size * 0.09), hex("#13a15f"));
-  circle(pixels, size, x, y2, Math.max(2, size * 0.09), hex("#13a15f"));
-  circle(pixels, size, x, y3, Math.max(2, size * 0.105), hex("#ffdf45"));
-  circle(pixels, size, x, y3, Math.max(1, size * 0.045), hex("#2c2100"));
+  circle(pixels, size, Math.round(size * 0.68), Math.round(size * 0.34), Math.max(2, size * 0.08), red);
+  circle(pixels, size, Math.round(size * 0.68), Math.round(size * 0.34), Math.max(1, size * 0.035), hex("#ffffff"));
+  line(pixels, size, Math.round(size * 0.29), Math.round(size * 0.68), Math.round(size * 0.72), Math.round(size * 0.68), Math.max(2, size * 0.045), blue);
 
   const rawRows = [];
   for (let y = 0; y < size; y += 1) {

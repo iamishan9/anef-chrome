@@ -4,6 +4,7 @@
   const STORE_KEY = "anefTrackerState";
   const DATA = window.ANEF_TRACKER_DATA || { statuses: {}, phases: {}, statusOrder: [], negativeOrder: [], sources: [] };
   const LOGIC = window.ANEF_TRACKER_LOGIC || {};
+  const EXTENSION_VERSION = chrome.runtime.getManifest?.()?.version || "0.2.0";
 
   const STEP_SETS = {
     completeScec: [
@@ -526,15 +527,18 @@
   function findHomeCardContext() {
     const labels = [
       "je demande l'acces a la nationalite francaise",
+      "je demande l acces a la nationalite francaise",
       "acces a la nationalite francaise",
+      "l'acces a la nationalite",
+      "l acces a la nationalite",
       "nationalite francaise",
     ];
-    const candidates = Array.from(document.querySelectorAll("app-root *"))
+    const candidates = Array.from(document.querySelectorAll("app-root *, main *"))
       .filter((element) => !element.closest("#anef-tracker-root"))
       .filter(isVisible)
       .filter((element) => {
         const text = normalizeText(element.innerText || element.textContent);
-        return text.length >= 12 && text.length <= 420 && labels.some((label) => text.includes(label));
+        return text.length >= 12 && text.length <= 720 && labels.some((label) => text.includes(label));
       })
       .map(climbToHomeCard)
       .filter(Boolean)
@@ -564,6 +568,51 @@
       node = node.parentElement;
     }
     return best;
+  }
+
+  function findCardGridContext() {
+    const cardSelectors = [
+      "a[href]",
+      "button",
+      "[role='button']",
+      ".fr-card",
+      ".fr-tile",
+      "article",
+    ].join(",");
+    const cards = Array.from(document.querySelectorAll(cardSelectors))
+      .filter((element) => !element.closest("#anef-tracker-root"))
+      .filter(isVisible)
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        const text = normalizeText(element.innerText || element.textContent);
+        return rect.width >= 150
+          && rect.width <= 390
+          && rect.height >= 90
+          && rect.height <= 280
+          && text.length >= 8
+          && text.length <= 720;
+      });
+    if (cards.length < 2) return null;
+
+    const groups = [];
+    for (const card of cards) {
+      const parent = card.parentElement;
+      if (!parent) continue;
+      let group = groups.find((entry) => entry.parent === parent);
+      if (!group) {
+        group = { parent, cards: [] };
+        groups.push(group);
+      }
+      group.cards.push(card);
+    }
+
+    const best = groups
+      .filter((group) => group.cards.length >= 2)
+      .sort((a, b) => b.cards.length - a.cards.length)[0];
+    if (!best) return null;
+
+    const nationality = best.cards.find((card) => normalizeText(card.innerText || card.textContent).includes("nationalite"));
+    return { container: nationality || best.cards[best.cards.length - 1], items: [] };
   }
 
   function isNationalityPage() {
@@ -610,6 +659,13 @@
 
   function placeRoot(context) {
     if (!root) root = ce("div", { id: "anef-tracker-root" });
+    root.classList.toggle("anef-tracker-floating-root", !context?.container);
+    root.classList.toggle("anef-tracker-inline-root", !!context?.container);
+    if (!context?.container) {
+      if (!root.parentElement) document.body.appendChild(root);
+      return;
+    }
+
     const anchor = context.container;
     const target = anchor?.parentElement || document.querySelector("app-root") || document.body;
     if (anchor && anchor.nextSibling !== root) {
@@ -673,6 +729,7 @@
 
     const title = ce("span", { className: "anef-tracker-home-title" }, "ANEF API tracker");
     card.appendChild(title);
+    card.appendChild(ce("span", { className: "anef-tracker-home-version" }, `v${EXTENSION_VERSION}`));
 
     const status = ce("span", { className: "anef-tracker-home-status" }, current?.code || "Waiting for ANEF login");
     card.appendChild(status);
@@ -806,9 +863,10 @@
     }
 
     injectPageScript();
-    const context = findHomeCardContext() || findStepperContext();
-    placeRoot(context);
-    decorateAnefStepper(context);
+    const cardContext = findHomeCardContext() || findCardGridContext();
+    const stepperContext = findStepperContext();
+    placeRoot(cardContext);
+    decorateAnefStepper(stepperContext);
     root.textContent = "";
 
     const shell = ce("div", { className: "anef-tracker-shell" });
