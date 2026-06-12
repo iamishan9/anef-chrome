@@ -523,6 +523,49 @@
     return node;
   }
 
+  function findHomeCardContext() {
+    const labels = [
+      "je demande l'acces a la nationalite francaise",
+      "acces a la nationalite francaise",
+      "nationalite francaise",
+    ];
+    const candidates = Array.from(document.querySelectorAll("app-root *"))
+      .filter((element) => !element.closest("#anef-tracker-root"))
+      .filter(isVisible)
+      .filter((element) => {
+        const text = normalizeText(element.innerText || element.textContent);
+        return text.length >= 12 && text.length <= 420 && labels.some((label) => text.includes(label));
+      })
+      .map(climbToHomeCard)
+      .filter(Boolean)
+      .sort((a, b) => {
+        const ar = a.getBoundingClientRect();
+        const br = b.getBoundingClientRect();
+        return (ar.width * ar.height) - (br.width * br.height);
+      });
+
+    const card = candidates[0] || null;
+    return card ? { container: card, items: [] } : null;
+  }
+
+  function climbToHomeCard(element) {
+    let node = element;
+    let best = null;
+    while (node && node !== document.body && node !== document.documentElement) {
+      const rect = node.getBoundingClientRect();
+      const text = normalizeText(node.innerText || node.textContent);
+      const looksLikeHomeCard = rect.width >= 160
+        && rect.width <= 360
+        && rect.height >= 100
+        && rect.height <= 260
+        && text.length <= 420;
+      if (looksLikeHomeCard) best = node;
+      if (rect.width > Math.min(window.innerWidth * 0.5, 520)) break;
+      node = node.parentElement;
+    }
+    return best;
+  }
+
   function isNationalityPage() {
     const text = document.body?.innerText || document.body?.textContent || "";
     if (typeof LOGIC.isNationalityPage === "function") return LOGIC.isNationalityPage(window.location.href, text);
@@ -580,6 +623,67 @@
     if (!root) return;
     root.textContent = "";
     if (root.parentElement) root.remove();
+  }
+
+  function showDetailsModal() {
+    const existing = document.getElementById("anef-tracker-modal");
+    if (existing) existing.remove();
+
+    const overlay = ce("div", { id: "anef-tracker-modal", role: "dialog", "aria-modal": "true", "aria-label": "ANEF API tracker details" });
+    const panel = ce("div", { className: "anef-tracker-modal-panel" });
+    const header = ce("div", { className: "anef-tracker-modal-header" });
+    header.appendChild(ce("h2", {}, "ANEF API tracker"));
+    const close = ce("button", { type: "button", className: "anef-tracker-close", "aria-label": "Close details" }, "x");
+    const closeModal = () => {
+      overlay.remove();
+      document.removeEventListener("keydown", onEscape);
+    };
+    function onEscape(event) {
+      if (event.key === "Escape") closeModal();
+    }
+    close.addEventListener("click", closeModal);
+    header.appendChild(close);
+    panel.appendChild(header);
+
+    const body = ce("div", { className: "anef-tracker-body" });
+    renderCurrent(body);
+    renderRealDates(body);
+    renderKeyDates(body);
+    renderActions(body);
+    renderSources(body);
+    panel.appendChild(body);
+    overlay.appendChild(panel);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) closeModal();
+    });
+    document.addEventListener("keydown", onEscape);
+    document.body.appendChild(overlay);
+  }
+
+  function renderSummaryCard(container) {
+    const current = state.current;
+    const info = statusInfo(current?.code);
+    const changedDate = current?.date || current?.observedAt;
+    const stepId = currentStepId();
+
+    const card = ce("button", { type: "button", className: "anef-tracker-home-card", "aria-label": "Open ANEF API tracker details" });
+    const icon = ce("span", { className: "anef-tracker-home-icon", "aria-hidden": "true" });
+    icon.appendChild(ce("span", {}, "i"));
+    card.appendChild(icon);
+
+    const title = ce("span", { className: "anef-tracker-home-title" }, "ANEF API tracker");
+    card.appendChild(title);
+
+    const status = ce("span", { className: "anef-tracker-home-status" }, current?.code || "Waiting for ANEF login");
+    card.appendChild(status);
+
+    const summary = current?.code
+      ? `${info.label}${changedDate ? ` - changed ${formatDate(changedDate)}` : ""}${stepId ? ` - step ${stepId}` : ""}`
+      : "Open your nationality dashboard to load the latest API status.";
+    card.appendChild(ce("span", { className: "anef-tracker-home-summary" }, summary));
+    card.appendChild(ce("span", { className: "anef-tracker-home-arrow", "aria-hidden": "true" }, "->"));
+    card.addEventListener("click", showDetailsModal);
+    container.appendChild(card);
   }
 
   function renderCurrent(container) {
@@ -702,19 +806,13 @@
     }
 
     injectPageScript();
-    const context = findStepperContext();
+    const context = findHomeCardContext() || findStepperContext();
     placeRoot(context);
     decorateAnefStepper(context);
     root.textContent = "";
 
     const shell = ce("div", { className: "anef-tracker-shell" });
-    const body = ce("div", { className: "anef-tracker-body" });
-    renderCurrent(body);
-    renderRealDates(body);
-    renderKeyDates(body);
-    renderActions(body);
-    renderSources(body);
-    shell.appendChild(body);
+    renderSummaryCard(shell);
     root.appendChild(shell);
     window.setTimeout(() => {
       quietUntil = 0;
