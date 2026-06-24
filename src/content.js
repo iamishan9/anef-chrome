@@ -4,7 +4,7 @@
   const STORE_KEY = "anefTrackerState";
   const DATA = window.ANEF_TRACKER_DATA || { statuses: {}, phases: {}, statusOrder: [], negativeOrder: [], sources: [] };
   const LOGIC = window.ANEF_TRACKER_LOGIC || {};
-  const EXTENSION_VERSION = chrome.runtime.getManifest?.()?.version || "0.2.2";
+  const EXTENSION_VERSION = chrome.runtime.getManifest?.()?.version || "1.0";
 
   const PHASE_COPY_FR = {
     preparation: { label: "Preparation et controle formel", estimate: "1 a 3 mois" },
@@ -76,6 +76,7 @@
   let root = null;
   let renderTimer = null;
   let quietUntil = 0;
+  let revealSensitive = false;
 
   function ce(tag, attrs, text) {
     const element = document.createElement(tag);
@@ -135,6 +136,35 @@
     return normalizeText(label).includes("assimilation");
   }
 
+  const EVENT_LABELS_FR = {
+    DEMANDE_COMPLEMENT: "Demande de complement",
+    CONFIRMATION_DEPOT: "Confirmation du depot",
+    ENTRETIEN_ASSIMILATION_FIXE: "Entretien d'assimilation fixe",
+    RECEPISSE_COMPLETUDE: "Recepisse de completude",
+    DECISION_NOTIFIEE: "Decision notifiee",
+    DECRET_PUBLIE: "Decret publie",
+  };
+
+  function humanizeEventLabel(label) {
+    const key = String(label || "").trim();
+    if (!key) return "";
+    if (EVENT_LABELS_FR[key]) return EVENT_LABELS_FR[key];
+    if (/^[A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(key)) {
+      const sentence = key.toLowerCase().replace(/_/g, " ");
+      return sentence.charAt(0).toUpperCase() + sentence.slice(1);
+    }
+    return key;
+  }
+
+  function maskSensitive(value, keepPrefix = 0) {
+    const text = String(value ?? "");
+    if (!text || revealSensitive) return text;
+    if (keepPrefix > 0 && text.length > keepPrefix) {
+      return text.slice(0, keepPrefix) + text.slice(keepPrefix).replace(/\S/g, "*");
+    }
+    return text.replace(/\S/g, "*");
+  }
+
   function daysSince(value) {
     const iso = normalizeDate(value);
     if (!iso) return null;
@@ -161,7 +191,7 @@
     const normalized = normalizeText(text);
     if (!normalized) return "Pret";
     if (normalized.includes("starting") || normalized.includes("demarrage")) return "Demarrage";
-    if (normalized.includes("loaded from anef") || normalized.includes("charge")) return "Donnees ANEF chargees";
+    if (normalized.includes("loaded") || normalized.includes("charge")) return "Donnees ANEF chargees";
     if (normalized.includes("refresh")) return "Actualisation des API ANEF";
     if (normalized.includes("waiting") || normalized.includes("attente")) return "En attente des donnees ANEF";
     if (normalized.includes("ready") || normalized.includes("pret")) return "Pret";
@@ -188,6 +218,14 @@
 
   function updateDateText(value) {
     return value ? `Mis a jour le ${formatDate(value, true)}` : "Date de mise a jour non exposee par ANEF";
+  }
+
+  function statusDisplayLabel(info) {
+    return info?.labelFr || info?.label || info?.code || "Statut inconnu";
+  }
+
+  function statusDisplayDetail(info) {
+    return info?.detailFr || info?.detail || "Ce statut a ete trouve dans les donnees ANEF, mais il n'est pas encore decrit localement.";
   }
 
   function statusInfo(code) {
@@ -760,11 +798,7 @@
     panel.appendChild(header);
 
     const body = ce("div", { className: "anef-tracker-body" });
-    renderCurrent(body);
-    renderRealDates(body);
-    renderKeyDates(body);
-    renderActions(body);
-    renderSources(body);
+    renderModalBody(body);
     panel.appendChild(body);
     overlay.appendChild(panel);
     overlay.addEventListener("click", (event) => {
@@ -772,6 +806,16 @@
     });
     document.addEventListener("keydown", onEscape);
     document.body.appendChild(overlay);
+  }
+
+  function renderModalBody(body) {
+    body.textContent = "";
+    renderCurrent(body);
+    renderIdentifiers(body);
+    renderChronology(body);
+    renderHistory(body);
+    renderActions(body);
+    renderSources(body);
   }
 
   function renderSummaryCard(container) {
@@ -796,7 +840,8 @@
     const details = ce("span", { className: "anef-tracker-home-details" });
     if (current?.code) {
       details.appendChild(ce("span", { className: "anef-tracker-home-detail anef-tracker-home-detail-step" }, step ? `Etape ${step.id} - ${step.label}` : "Etape visuelle non exposee par ANEF"));
-      details.appendChild(ce("span", { className: "anef-tracker-home-detail" }, updateDateText(changedDate)));
+      const since = relativeAge(changedDate);
+      details.appendChild(ce("span", { className: "anef-tracker-home-detail" }, since ? `${updateDateText(changedDate)} (${since})` : updateDateText(changedDate)));
     } else {
       details.appendChild(ce("span", { className: "anef-tracker-home-detail" }, "Ouvrez votre espace nationalite pour charger le dernier statut API."));
     }
@@ -809,39 +854,37 @@
   function renderCurrent(container) {
     const current = state.current;
     const info = statusInfo(current?.code);
-    const changedDate = current?.date || current?.observedAt;
     const expected = expectedRangeFr(info);
-    const step = currentStepInfo();
 
     const card = ce("section", { className: "anef-tracker-current" });
-    const title = ce("div", { className: "anef-tracker-inline-title" });
-    title.appendChild(ce("strong", {}, "Suivi API ANEF"));
-    title.appendChild(ce("span", {}, runtimeStatusLabel(state.runtimeStatus)));
-    card.appendChild(title);
 
-    const codeLine = ce("div", { className: "anef-tracker-code-row" });
-    codeLine.appendChild(ce("span", { className: "anef-tracker-current-code" }, currentStatusText(current)));
-    if (current?.code && changedDate) codeLine.appendChild(ce("span", { className: "anef-tracker-current-date" }, `Modifie le ${formatDate(changedDate)}`));
-    card.appendChild(codeLine);
-
-    card.appendChild(ce("p", {}, current?.code
-      ? "Statut API actuel detecte dans les donnees ANEF. Les dates ci-dessous viennent des endpoints ANEF exposes sur la page nationalite."
-      : "Ouvrez votre espace ANEF apres connexion; l'extension ajoutera les vraies dates API sur la frise."));
-
+    const head = ce("div", { className: "anef-tracker-current-head" });
     if (current?.code) {
-      const meta = ce("div", { className: "anef-tracker-meta-grid" });
-      meta.appendChild(metaItem("Etape visuelle", step ? `Etape ${step.id} - ${step.label}` : "Inconnue"));
-      meta.appendChild(metaItem("Phase", phaseLabelFr(info)));
-      meta.appendChild(metaItem("Date observee", changedDate ? `${formatDate(changedDate, true)}${relativeAge(changedDate) ? ` (${relativeAge(changedDate)})` : ""}` : "Non exposee par ANEF"));
-      meta.appendChild(metaItem("Prochaine estimation", expected));
-      card.appendChild(meta);
+      head.appendChild(ce("span", { className: "anef-tracker-current-code" }, currentStatusText(current)));
+    }
+    head.appendChild(ce("span", { className: "anef-tracker-runtime-badge" }, runtimeStatusLabel(state.runtimeStatus)));
+    card.appendChild(head);
 
-      const next = Array.isArray(info.next) ? info.next : [];
-      if (next.length) {
-        const list = ce("div", { className: "anef-tracker-next-list" });
-        for (const code of next) list.appendChild(ce("span", { className: "anef-tracker-next-pill" }, code));
-        card.appendChild(list);
-      }
+    if (!current?.code) {
+      card.appendChild(ce("p", { className: "anef-tracker-status-detail" }, "Ouvrez votre espace ANEF apres connexion ; l'extension ajoutera les vraies dates API sur la frise."));
+      container.appendChild(card);
+      return;
+    }
+
+    card.appendChild(ce("p", { className: "anef-tracker-status-label" }, statusDisplayLabel(info)));
+    card.appendChild(ce("p", { className: "anef-tracker-status-detail" }, statusDisplayDetail(info)));
+
+    const compact = ce("div", { className: "anef-tracker-compact-meta" });
+    compact.appendChild(metaItem("Phase", phaseLabelFr(info)));
+    compact.appendChild(metaItem("Estimation", expected));
+    card.appendChild(compact);
+
+    const next = Array.isArray(info.next) ? info.next : [];
+    if (next.length) {
+      const list = ce("div", { className: "anef-tracker-next-list" });
+      list.appendChild(ce("span", { className: "anef-tracker-next-heading" }, "Statuts suivants probables"));
+      for (const code of next) list.appendChild(ce("span", { className: "anef-tracker-next-pill" }, code));
+      card.appendChild(list);
     }
 
     container.appendChild(card);
@@ -854,37 +897,132 @@
     return wrap;
   }
 
-  function renderRealDates(container) {
-    const entries = activeStepSet()
+  function stepEntriesForDedup() {
+    return activeStepSet()
+      .map((step) => ({ id: step.id, label: step.label, date: stepDate(step) }))
+      .filter((entry) => entry.date);
+  }
+
+  function filteredExtraKeyDates() {
+    const stepEntries = stepEntriesForDedup();
+    if (typeof LOGIC.filterKeyDates === "function") {
+      return LOGIC.filterKeyDates(state.keyDates, stepEntries, state.decretIds);
+    }
+    return state.keyDates.filter((item) => item.date || item.meta?.decretId);
+  }
+
+  function renderChronology(container) {
+    const steps = activeStepSet();
+    const activeId = currentStepId();
+    const datedSteps = steps
       .map((step) => ({ step, date: stepDate(step) }))
-      .filter((entry) => entry.date)
-      .slice(0, 16);
-    if (!entries.length) return;
+      .filter((entry) => entry.date);
+    const extras = filteredExtraKeyDates().filter((item) => item.date);
+
+    if (!datedSteps.length && !extras.length) return;
 
     const section = ce("section", { className: "anef-tracker-section" });
-    section.appendChild(ce("h3", {}, "Dates reelles trouvees dans les API ANEF"));
-    const grid = ce("div", { className: "anef-tracker-keydates" });
-    for (const entry of entries) {
-      grid.appendChild(keyDate(`Etape ${entry.step.id}: ${entry.step.label}`, formatDate(entry.date, shouldShowTimeForLabel(entry.step.label))));
+    section.appendChild(ce("h3", {}, "Chronologie"));
+
+    if (datedSteps.length) {
+      const list = ce("ol", { className: "anef-tracker-chronology" });
+      for (const entry of datedSteps) {
+        const row = ce("li", {
+          className: [
+            "anef-tracker-chronology-row",
+            entry.step.id === activeId ? "anef-tracker-chronology-current" : "",
+          ].filter(Boolean).join(" "),
+        });
+        row.appendChild(ce("span", { className: "anef-tracker-chronology-step" }, `Etape ${entry.step.id}`));
+        row.appendChild(ce("span", { className: "anef-tracker-chronology-label" }, entry.step.label));
+        row.appendChild(ce("time", { className: "anef-tracker-chronology-date" }, formatDate(entry.date, shouldShowTimeForLabel(entry.step.label))));
+        list.appendChild(row);
+      }
+      section.appendChild(list);
     }
+
+    const uniqueExtras = [];
+    const seenExtras = new Set();
+    for (const item of extras) {
+      const label = humanizeEventLabel(item.label);
+      const key = `${normalizeText(label)}|${item.date}`;
+      if (seenExtras.has(key)) continue;
+      seenExtras.add(key);
+      uniqueExtras.push({ label, date: item.date, rawLabel: item.label });
+    }
+
+    if (uniqueExtras.length) {
+      const extraHeading = ce("h4", { className: "anef-tracker-chronology-extra-heading" }, "Autres evenements API");
+      section.appendChild(extraHeading);
+      const extraList = ce("ul", { className: "anef-tracker-chronology anef-tracker-chronology-extras" });
+      for (const item of uniqueExtras.slice(-8)) {
+        const row = ce("li", { className: "anef-tracker-chronology-row anef-tracker-chronology-extra" });
+        row.appendChild(ce("span", { className: "anef-tracker-chronology-label" }, item.label));
+        row.appendChild(ce("time", { className: "anef-tracker-chronology-date" }, formatDate(item.date, shouldShowTimeForLabel(item.rawLabel))));
+        extraList.appendChild(row);
+      }
+      section.appendChild(extraList);
+    }
+
+    container.appendChild(section);
+  }
+
+  function renderIdentifiers(container) {
+    const hasIds = state.dossierNumber || state.dossierId || (state.decretIds || []).length;
+    if (!hasIds) return;
+
+    const section = ce("section", { className: "anef-tracker-section anef-tracker-identifiers" });
+
+    const header = ce("div", { className: "anef-tracker-section-header" });
+    header.appendChild(ce("h3", {}, "Identifiants dossier"));
+    const toggle = ce(
+      "button",
+      { type: "button", className: "anef-tracker-reveal-toggle", "aria-pressed": String(revealSensitive) },
+      revealSensitive ? "Masquer les infos" : "Afficher les infos",
+    );
+    toggle.addEventListener("click", () => {
+      revealSensitive = !revealSensitive;
+      renderModalBody(container);
+    });
+    header.appendChild(toggle);
+    section.appendChild(header);
+
+    const grid = ce("div", { className: "anef-tracker-keydates" });
+    if (state.dossierNumber) grid.appendChild(keyDate("Numero de dossier", maskSensitive(state.dossierNumber, 5)));
+    if (state.dossierId) grid.appendChild(keyDate("Identifiant dossier interne", maskSensitive(state.dossierId)));
+    for (const id of state.decretIds || []) grid.appendChild(keyDate("Identifiant decret ANEF", id));
     section.appendChild(grid);
     container.appendChild(section);
   }
 
-  function renderKeyDates(container) {
-    const useful = state.keyDates.filter((item) => item.date || item.meta?.decretId).slice(-10);
-    if (!useful.length && !state.decretIds.length && !state.dossierId && !state.dossierNumber) return;
-    const section = ce("section", { className: "anef-tracker-section" });
-    section.appendChild(ce("h3", {}, "Autres donnees API"));
-    const grid = ce("div", { className: "anef-tracker-keydates" });
-    if (state.dossierNumber) grid.appendChild(keyDate("Numero de dossier", state.dossierNumber));
-    if (state.dossierId) grid.appendChild(keyDate("Identifiant dossier interne", state.dossierId));
-    for (const id of state.decretIds || []) grid.appendChild(keyDate("Identifiant decret ANEF", id));
-    for (const item of useful) {
-      if (item.meta?.decretId) continue;
-      grid.appendChild(keyDate(item.label, item.date ? formatDate(item.date, shouldShowTimeForLabel(item.label)) : "Trouve"));
+  function statusChangeLog() {
+    const transitions = [];
+    for (const observation of state.observations || []) {
+      if (!observation?.code) continue;
+      const previous = transitions[transitions.length - 1];
+      if (previous && previous.code === observation.code) continue;
+      transitions.push(observation);
     }
-    section.appendChild(grid);
+    return transitions;
+  }
+
+  function renderHistory(container) {
+    const currentCode = state.current?.code || null;
+    const entries = statusChangeLog()
+      .filter((entry) => entry.code !== currentCode)
+      .reverse();
+    if (!entries.length) return;
+
+    const section = ce("section", { className: "anef-tracker-section anef-tracker-history" });
+    section.appendChild(ce("h3", {}, "Changements precedents"));
+    const list = ce("ol", { className: "anef-tracker-history-list" });
+    for (const entry of entries.slice(0, 10)) {
+      const item = ce("li", { className: "anef-tracker-history-item" });
+      item.appendChild(ce("code", {}, entry.code));
+      item.appendChild(ce("span", { className: "anef-tracker-history-date" }, formatDate(entry.date || entry.observedAt, true)));
+      list.appendChild(item);
+    }
+    section.appendChild(list);
     container.appendChild(section);
   }
 

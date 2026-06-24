@@ -256,8 +256,130 @@
 }
 
 .anef-tracker-current {
+  background: #f1faf4;
+  border-color: rgba(8, 116, 67, 0.28);
+  border-left: 4px solid #087443;
+  position: relative;
+}
+
+.anef-tracker-current-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  justify-content: space-between;
+}
+
+.anef-tracker-runtime-badge {
+  color: #667085;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-left: auto;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.anef-tracker-status-label {
+  color: #000091;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.anef-tracker-status-detail {
+  color: #475467;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.anef-tracker-compact-meta {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.anef-tracker-next-heading {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 800;
+  width: 100%;
+}
+
+.anef-tracker-chronology,
+.anef-tracker-history-list {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.anef-tracker-chronology-row,
+.anef-tracker-history-item {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid rgba(20, 32, 58, 0.1);
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  padding: 8px 10px;
+}
+
+.anef-tracker-chronology-extra,
+.anef-tracker-history-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.anef-tracker-chronology-current {
   background: #f7f7ff;
-  border-color: rgba(0, 0, 145, 0.24);
+  border-color: rgba(0, 0, 145, 0.28);
+  box-shadow: inset 3px 0 0 #000091;
+}
+
+.anef-tracker-chronology-step {
+  color: #000091;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.anef-tracker-chronology-label {
+  color: #101828;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.anef-tracker-chronology-date,
+.anef-tracker-history-date {
+  color: #087443;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.anef-tracker-chronology-extra-heading {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+  margin: 8px 0 0;
+}
+
+.anef-tracker-history-item code {
+  color: #000091;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.anef-tracker-identifiers .anef-tracker-keydates {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .anef-tracker-inline-title {
@@ -301,11 +423,13 @@
 }
 
 .anef-tracker-current-code {
-  background: #eeeeff;
-  border: 1px solid rgba(0, 0, 145, 0.32);
-  color: #000091;
-  font-size: 12px;
-  padding: 6px 8px;
+  background: #087443;
+  border: 1px solid #065c35;
+  box-shadow: 0 1px 4px rgba(8, 116, 67, 0.32);
+  color: #ffffff;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
 }
 
 .anef-tracker-current-date,
@@ -362,6 +486,38 @@
   font-size: 14px;
   line-height: 1.25;
   margin: 0;
+}
+
+.anef-tracker-section-header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.anef-tracker-reveal-toggle {
+  background: #ffffff;
+  border: 1px solid #000091;
+  border-radius: 6px;
+  color: #000091;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.anef-tracker-reveal-toggle:hover,
+.anef-tracker-reveal-toggle:focus-visible {
+  background: #f7f7ff;
+  outline: 2px solid rgba(0, 0, 145, 0.24);
+}
+
+.anef-tracker-identifiers .anef-tracker-keydate strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.04em;
 }
 
 .anef-tracker-next-pill {
@@ -487,7 +643,13 @@
 
 @media (max-width: 600px) {
   .anef-tracker-meta-grid,
-  .anef-tracker-keydates {
+  .anef-tracker-keydates,
+  .anef-tracker-compact-meta,
+  .anef-tracker-identifiers .anef-tracker-keydates {
+    grid-template-columns: 1fr;
+  }
+
+  .anef-tracker-chronology-row {
     grid-template-columns: 1fr;
   }
 }

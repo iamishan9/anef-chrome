@@ -76,6 +76,55 @@
     return null;
   }
 
+  function normalizeKeyDateLabel(label) {
+    return normalizeText(label)
+      .replace(/^frise:\s*/, "")
+      .replace(/^timeline:\s*/, "");
+  }
+
+  function stepLabelMatches(normalizedKeyLabel, stepLabel) {
+    const step = normalizeText(stepLabel);
+    if (!step || !normalizedKeyLabel) return false;
+    return normalizedKeyLabel.includes(step) || step.includes(normalizedKeyLabel);
+  }
+
+  function keyDateMatchesStepDate(item, stepEntries) {
+    const itemDate = normalizeDate(item?.date);
+    if (!itemDate) return false;
+    const label = normalizeKeyDateLabel(item.label);
+    if (label.includes("statut") || label === "status date" || label === "date du statut") {
+      return true;
+    }
+    for (const step of stepEntries || []) {
+      const stepDate = normalizeDate(step.date);
+      if (!stepDate || stepDate !== itemDate) continue;
+      const stepNorm = normalizeText(step.label);
+      if (label.includes("assimilation") && stepNorm.includes("assimilation")) return true;
+      if (label.includes("recepisse") && stepNorm.includes("recepisse")) return true;
+      if (stepLabelMatches(label, step.label)) return true;
+    }
+    return false;
+  }
+
+  function shouldSkipKeyDate(item, stepEntries, decretIds) {
+    if (!item?.label) return true;
+    if (item.meta?.decretId) return true;
+    const label = normalizeText(item.label);
+    if (label.startsWith("identifiant decret")) return true;
+    if (label === "date du statut" || label === "status date") return true;
+    if (decretIds?.some((id) => label.includes(String(id)))) return true;
+    if (keyDateMatchesStepDate(item, stepEntries)) return true;
+    if (label.startsWith("frise :") || label.startsWith("timeline:")) {
+      const clean = normalizeKeyDateLabel(item.label);
+      return (stepEntries || []).some((step) => stepLabelMatches(clean, step.label));
+    }
+    return false;
+  }
+
+  function filterKeyDates(keyDates, stepEntries, decretIds) {
+    return (keyDates || []).filter((item) => !shouldSkipKeyDate(item, stepEntries, decretIds));
+  }
+
   function isNationalityPage(url, pageText) {
     const normalizedUrl = normalizeText(url);
     if ([
@@ -110,8 +159,11 @@
   const api = {
     normalizeText,
     normalizeDate,
+    normalizeKeyDateLabel,
     specificKeyDatesForStep,
     selectStepDate,
+    shouldSkipKeyDate,
+    filterKeyDates,
     isNationalityPage,
   };
 

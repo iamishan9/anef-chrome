@@ -446,6 +446,217 @@
     },
   };
 
+  const statusCopyFr = {
+    DRAFT: {
+      labelFr: "Brouillon",
+      detailFr: "La demande de naturalisation est en cours de preparation et n'a pas encore ete deposee.",
+    },
+    DOSSIER_DEPOSE: {
+      labelFr: "Dossier depose",
+      detailFr: "Le dossier est enregistre et attend son premier controle formel.",
+    },
+    VERIFICATION_FORMELLE_A_TRAITER: {
+      labelFr: "Controle formel en attente",
+      detailFr: "La prefecture a recu le dossier et va verifier les pieces obligatoires et l'eligibilite de base.",
+    },
+    VERIFICATION_FORMELLE_EN_COURS: {
+      labelFr: "Controle formel en cours",
+      detailFr: "Un agent verifie la completude et la recevabilite du dossier.",
+    },
+    VERIFICATION_FORMELLE_MISE_EN_DEMEURE: {
+      labelFr: "Mise en demeure : pieces manquantes",
+      detailFr: "L'administration demande des pieces manquantes ou non conformes. Consultez les messages et courriers ANEF.",
+    },
+    INSTRUCTION_A_AFFECTER: {
+      labelFr: "Recevable, en attente d'instructeur",
+      detailFr: "Le dossier a passe le controle formel et attend d'etre affecte a un instructeur de prefecture.",
+    },
+    INSTRUCTION_RECEPISSE_COMPLETUDE_A_ENVOYER: {
+      labelFr: "Dossier complet, recepisse a envoyer",
+      detailFr: "Un instructeur de prefecture examine le dossier ; le recepisse de completude doit etre envoye.",
+    },
+    INSTRUCTION_RECEPISSE_COMPLETUDE_A_ENVOYER_RETOUR_COMPLEMENT_A_TRAITER: {
+      labelFr: "Complements en cours d'examen",
+      detailFr: "Les pieces envoyees apres une demande de complements sont en cours de verification.",
+    },
+    INSTRUCTION_DATE_EA_A_FIXER: {
+      labelFr: "Date d'entretien a fixer",
+      detailFr: "Les verifications administratives ont commence ; la date de l'entretien d'assimilation doit etre fixee.",
+    },
+    EA_EN_ATTENTE_EA: {
+      labelFr: "Entretien d'assimilation en attente",
+      detailFr: "La convocation a l'entretien a ete envoyee ou est attendue. Preparez l'entretien d'assimilation.",
+    },
+    EA_DEMANDE_REPORT_EA: {
+      labelFr: "Report d'entretien demande",
+      detailFr: "Une demande de report a ete enregistree ; une nouvelle date devrait etre proposee.",
+    },
+    EA_CREA_A_VALIDER: {
+      labelFr: "Compte rendu d'entretien a valider",
+      detailFr: "L'entretien est termine ; le compte rendu est en cours de redaction ou de validation.",
+    },
+    PROP_DECISION_PREF_A_EFFECTUER: {
+      labelFr: "Proposition de la prefecture en cours",
+      detailFr: "L'instructeur prepare l'avis de la prefecture avant transmission ou decision.",
+    },
+    PROP_DECISION_PREF_EN_ATTENTE_RETOUR_HIERARCHIQUE: {
+      labelFr: "Avis en attente de validation hierarchique",
+      detailFr: "La proposition de l'instructeur attend une validation interne.",
+    },
+    PROP_DECISION_PREF_PROP_A_EDITER: {
+      labelFr: "Avis officiel en redaction",
+      detailFr: "La proposition validee de la prefecture est en cours de redaction.",
+    },
+    PROP_DECISION_PREF_EN_ATTENTE_RETOUR_SIGNATAIRE: {
+      labelFr: "En attente de signature prefectorale",
+      detailFr: "La proposition attend la signature avant transmission au ministere.",
+    },
+    CONTROLE_A_AFFECTER: {
+      labelFr: "File SDANF",
+      detailFr: "Le dossier est arrive a la SDANF a Reze et attend d'etre affecte a un agent du ministere.",
+    },
+    CONTROLE_A_EFFECTUER: {
+      labelFr: "Controle SDANF en cours",
+      detailFr: "Un agent du ministere verifie l'etat civil, la coherence, la moralite, la fiscalite, la residence et la stabilite professionnelle.",
+    },
+    CONTROLE_EN_ATTENTE_PEC: {
+      labelFr: "Controle SCEC en attente",
+      detailFr: "Le dossier a ete transmis au SCEC a Nantes pour verification d'etat civil et attend d'etre pris en charge.",
+    },
+    CONTROLE_PEC_A_FAIRE: {
+      labelFr: "Verification SCEC de l'etat civil",
+      detailFr: "Le SCEC verifie les pieces d'etat civil etrangeres.",
+    },
+    CONTROLE_TRANSMISE_POUR_DECRET: {
+      labelFr: "Favorable, transmis pour decret",
+      detailFr: "Le dossier semble favorable et est transmis pour insertion dans un decret de naturalisation.",
+    },
+    CONTROLE_EN_ATTENTE_RETOUR_HIERARCHIQUE: {
+      labelFr: "Validation hierarchique au ministere",
+      detailFr: "Une decision favorable ou un element de preparation de decret attend une validation hierarchique.",
+    },
+    CONTROLE_DECISION_A_EDITER: {
+      labelFr: "Decision en redaction",
+      detailFr: "Le document de decision favorable est en cours de redaction.",
+    },
+    CONTROLE_EN_ATTENTE_SIGNATURE: {
+      labelFr: "En attente de signature ministerielle",
+      detailFr: "Le decret ou la decision favorable attend la signature.",
+    },
+    TRANSMIS_A_AC: {
+      labelFr: "Transmis a l'administration centrale",
+      detailFr: "Le dossier favorable est chez le service des decrets.",
+    },
+    A_VERIFIER_AVANT_INSERTION_DECRET: {
+      labelFr: "Verification finale avant insertion au decret",
+      detailFr: "Les dernieres verifications administratives sont en cours avant insertion dans un decret.",
+    },
+    PRETE_POUR_INSERTION_DECRET: {
+      labelFr: "Pret pour insertion au decret",
+      detailFr: "Le dossier est valide et pret a etre insere dans un decret.",
+    },
+    DECRET_EN_PREPARATION: {
+      labelFr: "Decret en preparation",
+      detailFr: "Un decret incluant la demande est en cours de preparation.",
+    },
+    DECRET_A_QUALIFIER: {
+      labelFr: "Decret en qualification",
+      detailFr: "Le decret est en cours de categorisation et de verification avant validation finale.",
+    },
+    DECRET_EN_VALIDATION: {
+      labelFr: "Decret en validation finale",
+      detailFr: "Le decret est en validation finale avant signature et publication.",
+    },
+    INSEREE_DANS_DECRET: {
+      labelFr: "Inscrit dans un decret signe",
+      detailFr: "Le nom est inscrit dans un decret de naturalisation. La publication au Journal officiel est proche.",
+    },
+    DECRET_ENVOYE_PREFECTURE: {
+      labelFr: "Decret transmis a la prefecture",
+      detailFr: "Le decret signe a ete transmis a la prefecture pour notification ou ceremonie.",
+    },
+    NOTIFICATION_ENVOYEE: {
+      labelFr: "Notification officielle envoyee",
+      detailFr: "La notification officielle de naturalisation a ete envoyee.",
+    },
+    DECRET_NATURALISATION_PUBLIE: {
+      labelFr: "Decret publie au Journal officiel",
+      detailFr: "Le decret de naturalisation est publie. Vous etes officiellement francais.",
+    },
+    DECRET_NATURALISATION_PUBLIE_JO: {
+      labelFr: "Decret publie au Journal officiel",
+      detailFr: "Le decret de naturalisation est publie. Vous etes officiellement francais.",
+    },
+    DECRET_PUBLIE: {
+      labelFr: "Decret publie",
+      detailFr: "Le decret est publie ; la procedure de naturalisation est effectivement terminee.",
+    },
+    DEMANDE_TRAITEE: {
+      labelFr: "Demande entierement traitee",
+      detailFr: "La demande est marquee comme traitee. Consultez les messages ANEF pour le resultat exact.",
+    },
+    DECISION_NEGATIVE_EN_DELAIS_RECOURS: {
+      labelFr: "Decision negative, delai de recours ouvert",
+      detailFr: "Une decision negative a ete prise. Un delai de RAPO ou de recours contentieux peut s'appliquer.",
+    },
+    DECISION_NOTIFIEE: {
+      labelFr: "Decision notifiee",
+      detailFr: "La decision a ete officiellement notifiee. Consultez les courriers et messages ANEF.",
+    },
+    DEMANDE_EN_COURS_RAPO: {
+      labelFr: "Recours administratif (RAPO) en cours",
+      detailFr: "Un recours administratif est en cours d'examen par le ministere.",
+    },
+    CONTROLE_DEMANDE_NOTIFIEE: {
+      labelFr: "Decision du controle ministeriel notifiee",
+      detailFr: "La decision issue du controle ministeriel a ete notifiee.",
+    },
+    IRRECEVABILITE_MANIFESTE: {
+      labelFr: "Irrecevabilite manifeste",
+      detailFr: "La demande ne remplit pas les conditions legales de recevabilite.",
+    },
+    IRRECEVABILITE_MANIFESTE_EN_DELAIS_RECOURS: {
+      labelFr: "Irrecevable, delai de recours ouvert",
+      detailFr: "La decision d'irrecevabilite peut etre contestee pendant le delai de recours.",
+    },
+    CSS_MISE_EN_DEMEURE_A_AFFECTER: {
+      labelFr: "Cloture apres mise en demeure : a affecter",
+      detailFr: "Une procedure de cloture a peut-etre commence apres une mise en demeure restee sans reponse.",
+    },
+    CSS_MISE_EN_DEMEURE_A_REDIGER: {
+      labelFr: "Cloture apres mise en demeure : en redaction",
+      detailFr: "Une decision de cloture est en cours de redaction apres une mise en demeure.",
+    },
+    CSS_MANUELS_A_AFFECTER: {
+      labelFr: "Proposition de cloture manuelle : a affecter",
+      detailFr: "Un agent a propose une cloture sans notification finale pour l'instant.",
+    },
+    CSS_MANUELS_A_REDIGER: {
+      labelFr: "Proposition de cloture manuelle : en redaction",
+      detailFr: "Une decision de cloture manuelle est en cours de redaction.",
+    },
+    CSS_AUTOMATIQUES_A_AFFECTER: {
+      labelFr: "Cloture automatique : a affecter",
+      detailFr: "Le systeme a declenche une procedure de cloture automatique.",
+    },
+    CSS_AUTOMATIQUES_A_REDIGER: {
+      labelFr: "Cloture automatique : en redaction",
+      detailFr: "Une decision de cloture automatique est en cours de redaction.",
+    },
+    CSS_EN_DELAIS_RECOURS: {
+      labelFr: "Cloture sans suite, delai de recours ouvert",
+      detailFr: "Le dossier a ete cloture sans suite ; un delai de recours peut etre ouvert.",
+    },
+    CSS_NOTIFIE: {
+      labelFr: "Cloture notifiee",
+      detailFr: "La decision de cloture a ete notifiee. Lisez le motif avant de redeposer ou de faire un recours.",
+    },
+  };
+
+  for (const [code, copy] of Object.entries(statusCopyFr)) {
+    if (statuses[code]) Object.assign(statuses[code], copy);
+  }
+
   const sources = [
     {
       label: "ANEF public bundle",

@@ -105,4 +105,53 @@ assert.equal(
   "the nationality stepper should show the tracker even when the URL is generic",
 );
 
+const stepEntries = [
+  { id: 7, label: "Entretien d'assimilation", date: interviewDate },
+  { id: 1, label: "Demande envoyee", date: "2026-01-12T00:00:00.000Z" },
+];
+
+assert.equal(
+  logic.shouldSkipKeyDate(
+    { label: "Entretien d'assimilation", date: interviewDate, source: "dossier-details" },
+    stepEntries,
+    [],
+  ),
+  true,
+  "assimilation key dates already shown on the step timeline should be skipped",
+);
+
+assert.equal(
+  logic.shouldSkipKeyDate(
+    { label: "Date du statut", date: statusDate, source: "dossier-statut" },
+    stepEntries,
+    [],
+  ),
+  true,
+  "status date key dates should be skipped because they duplicate the current status header",
+);
+
+assert.equal(
+  logic.shouldSkipKeyDate(
+    { label: "Frise : Demande envoyee", date: "2026-01-12T00:00:00.000Z", source: "frise-stepper" },
+    stepEntries,
+    [],
+  ),
+  true,
+  "frise dates that map to a visual step should be skipped",
+);
+
+assert.equal(
+  logic.filterKeyDates(
+    [
+      { label: "Complement demande", date: "2026-03-01T00:00:00.000Z", source: "dossier-details" },
+      { label: "Entretien d'assimilation", date: interviewDate, source: "dossier-details" },
+      { label: "Date du statut", date: statusDate, source: "dossier-statut" },
+    ],
+    stepEntries,
+    [],
+  ).length,
+  1,
+  "filterKeyDates should keep only non-duplicated API events",
+);
+
 console.log("extension logic tests passed");

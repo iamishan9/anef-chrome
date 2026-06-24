@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ANEF Naturalization Tracker",
   "short_name": "ANEF Tracker",
-  "version": "0.2.2",
+  "version": "1.0",
   "description": "Shows hidden ANEF naturalization status codes, local history, dated steps, and next-state estimates.",
   "author": "zephyrus.code",
   "homepage_url": "https://administration-etrangers-en-france.interieur.gouv.fr/",
